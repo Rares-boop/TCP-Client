@@ -63,9 +63,10 @@ public class LoginActivity extends AppCompatActivity {
             ObjectInputStream in = null;
             Log.e("####1","ENTER THREAD");
             try{
-                socket = new Socket("192.168.1.132",15555);
-                out = new ObjectOutputStream(socket.getOutputStream());
-                in = new ObjectInputStream(socket.getInputStream());
+                TcpConnection.connect("192.168.1.132",15555);
+                socket = TcpConnection.getSocket();
+                out = TcpConnection.getOut();
+                in = TcpConnection.getIn();
 
                 Log.e("####1","SOCKET ESTABLISHED");
 
@@ -82,7 +83,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> {
                     if(response instanceof User){
-                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        Intent intent = new Intent(LoginActivity.this, ConversationActivity.class);
                         startActivity(intent);
                     }
                     else if(response instanceof String){
