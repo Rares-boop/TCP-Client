@@ -10,7 +10,8 @@
     <EditText
         android:id="@+id/editTextTextPassword"
         android:layout_width="310dp"
-        android:layout_height="48dp"
+        android:layout_height="50dp"
+        android:background="@drawable/rounded_edittext"
         android:hint="Enter your password "
         android:layout_marginTop="36dp"
         android:ems="10"
@@ -25,7 +26,8 @@
     <com.google.android.material.textfield.TextInputEditText
         android:id="@+id/textInputEditText"
         android:layout_width="310dp"
-        android:layout_height="48dp"
+        android:layout_height="50dp"
+        android:background="@drawable/rounded_edittext"
         android:hint="Enter your username "
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
