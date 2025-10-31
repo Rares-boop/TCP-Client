@@ -3,16 +3,15 @@ package com.example.tcpclient;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -52,34 +51,24 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(this, "Please enter both values", Toast.LENGTH_SHORT).show();
             return;
         }
-
         Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show();
-
-        Log.e("####1","ENTER HANDLE LOGIN");
 
         new Thread(() -> {
             Socket socket = null;
             ObjectOutputStream out = null;
             ObjectInputStream in = null;
-            Log.e("####1","ENTER THREAD");
             try{
                 TcpConnection.connect("192.168.1.132",15555);
                 socket = TcpConnection.getSocket();
                 out = TcpConnection.getOut();
                 in = TcpConnection.getIn();
 
-                Log.e("####1","SOCKET ESTABLISHED");
-
                 // Trim username/password și trimitem serverului
                 String loginCredentials = username + "," + password;
                 out.writeObject(loginCredentials);
                 out.flush();
 
-                Log.e("####1","CREDENTIALS SENT");
-
                 Object response = in.readObject();
-
-                Log.e("####1","RESPONSE RECEIVED");
 
                 runOnUiThread(() -> {
                     if(response instanceof User){
@@ -90,10 +79,18 @@ public class LoginActivity extends AppCompatActivity {
                         TextView responseTextView = new TextView(LoginActivity.this);
                         responseTextView.setText((String) response);
                         responseTextView.setTextColor(Color.RED);
+                        responseTextView.setId(View.generateViewId());
                         layout.addView(responseTextView);
+
+                        ConstraintSet set = new ConstraintSet();
+                        set.clone(layout);
+                        set.connect(responseTextView.getId(), ConstraintSet.TOP, passwordField.getId(), ConstraintSet.BOTTOM, 20);
+                        set.connect(responseTextView.getId(), ConstraintSet.START, layout.getId(), ConstraintSet.START, 0);
+                        set.connect(responseTextView.getId(), ConstraintSet.END, layout.getId(), ConstraintSet.END, 0);
+                        set.setHorizontalBias(responseTextView.getId(), 0.5f);
+                        set.applyTo(layout);
                     }
 
-                    // Curățăm câmpurile după login
                     usernameField.setText("");
                     passwordField.setText("");
                     usernameField.requestFocus();
