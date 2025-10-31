@@ -127,4 +127,9 @@ public class LoginActivity extends AppCompatActivity {
             }
         }).start();
     }
+
+    public void handleRegister(View view) {
+        Intent newActivity = new Intent(LoginActivity.this, RegisterActivity.class);
+        startActivity(newActivity);
+    }
 }
