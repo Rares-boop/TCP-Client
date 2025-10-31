@@ -39,6 +39,12 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        TcpConnection.close();
+    }
+
     public void handleLogin(View view) {
         ConstraintLayout layout = findViewById(R.id.loginLayout);
         EditText usernameField = findViewById(R.id.textInputEditText);
@@ -71,12 +77,19 @@ public class LoginActivity extends AppCompatActivity {
                 Object response = in.readObject();
 
                 runOnUiThread(() -> {
+
+                    View textView = layout.findViewWithTag("responseText");
+                    if(textView!=null){
+                        layout.removeView(textView);
+                    }
+
                     if(response instanceof User){
                         Intent intent = new Intent(LoginActivity.this, ConversationActivity.class);
                         startActivity(intent);
                     }
                     else if(response instanceof String){
                         TextView responseTextView = new TextView(LoginActivity.this);
+                        responseTextView.setTag("responseText");
                         responseTextView.setText((String) response);
                         responseTextView.setTextColor(Color.RED);
                         responseTextView.setId(View.generateViewId());

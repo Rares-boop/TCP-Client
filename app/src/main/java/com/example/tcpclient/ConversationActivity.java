@@ -32,6 +32,12 @@ public class ConversationActivity extends AppCompatActivity {
         handleMessageRecive(view);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        TcpConnection.close();
+    }
+
     public void handleMessageRecive(View view) {
         EditText textBox = (EditText)findViewById(R.id.editTextMessage);
 

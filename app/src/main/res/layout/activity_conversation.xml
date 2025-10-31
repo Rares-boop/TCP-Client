@@ -9,12 +9,11 @@
 
     <EditText
         android:id="@+id/editTextMessage"
-        android:layout_width="209dp"
+        android:layout_width="210dp"
         android:layout_height="55dp"
-        android:ems="10"
         android:inputType="text"
         android:hint="Type here..."
-        android:background="@drawable/rounded_edittext"
+        android:background="@drawable/rounded_edittext_selector"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.227"
