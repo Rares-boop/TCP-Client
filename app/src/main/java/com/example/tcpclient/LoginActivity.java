@@ -69,6 +69,12 @@ public class LoginActivity extends AppCompatActivity {
                 out = TcpConnection.getOut();
                 in = TcpConnection.getIn();
 
+                //request login
+                String request = "GET_LOGIN";
+
+                out.writeObject(request);
+                out.flush();
+
                 // Trim username/password și trimitem serverului
                 String loginCredentials = username + "," + password;
                 out.writeObject(loginCredentials);
