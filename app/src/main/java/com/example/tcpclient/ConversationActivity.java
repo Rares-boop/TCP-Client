@@ -15,6 +15,8 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -23,11 +25,14 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+import chat.Message;
 import chat.User;
 
 public class ConversationActivity extends AppCompatActivity {
-    public static List<byte[]> sentMessages = new ArrayList<>();
-    public static List<byte[]> receivedMessages = new ArrayList<>();
+    public List<Message> messages = new ArrayList<>();
+    RecyclerView recyclerView;
+    int currentUserId = 1;
+    MessageAdapter messageAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,9 +43,15 @@ public class ConversationActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        recyclerView = (RecyclerView)findViewById(R.id.recyclerViewMessages);
+        messageAdapter = new MessageAdapter(this, messages, currentUserId);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(messageAdapter);
+
         View view = (View)findViewById(R.id.main);
-        //handleMessageRecive(view);
-        receiveMessage(view);
+        receiveMessage();
     }
 
     @Override
@@ -48,37 +59,6 @@ public class ConversationActivity extends AppCompatActivity {
         super.onDestroy();
         TcpConnection.close();
     }
-
-    /*public void handleMessageRecive(View view) {
-        EditText textBox = (EditText)findViewById(R.id.editTextMessage);
-
-        Socket socket = null;
-        ObjectOutputStream out = null;
-        ObjectInputStream in = null;
-        try{
-            socket = TcpConnection.getSocket();
-            out = TcpConnection.getOut();
-            out.flush();
-            in = TcpConnection.getIn();
-
-            //thread for receiving messages
-            ObjectInputStream finalIn = in;
-            new Thread(()->{
-                try{
-                    while (true){
-                        byte[] msg = (byte[]) finalIn.readObject();
-                        String text = new String(msg);
-                        Toast.makeText(getApplicationContext(),text,Toast.LENGTH_LONG).show();
-                    }
-                } catch (IOException | ClassNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-            }).start();
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }*/
 
     public void handleMessage(View view) {
         //Toast.makeText(getApplicationContext(),"Message logic",Toast.LENGTH_SHORT).show();
@@ -108,6 +88,11 @@ public class ConversationActivity extends AppCompatActivity {
                 out.flush();
 
                 runOnUiThread(() -> {
+                    //la messages unde este 0 primul este id message si al doilea id group
+                    messages.add(new Message(0, messageByte, System.currentTimeMillis(), currentUserId, 0));
+                    messageAdapter.notifyItemInserted(messages.size() - 1);
+                    recyclerView.scrollToPosition(messages.size() - 1);
+
                     messageBox.setText("");
                     messageBox.requestFocus();
                 });
@@ -117,25 +102,27 @@ public class ConversationActivity extends AppCompatActivity {
         }).start();
     }
 
-    public void receiveMessage(View view){
-        new Thread(()->{
+    public void receiveMessage(){
             new Thread(() -> {
                 try {
                     ObjectInputStream in = TcpConnection.getIn();
                     while (true) {
                         byte[] receivedMessageByte = (byte[]) in.readObject();
                         String messageText = new String(receivedMessageByte);
-                        // handle message
-                        runOnUiThread(()->{
-                            Toast.makeText(getApplicationContext(),"Message received "+messageText,
-                                    Toast.LENGTH_SHORT).show();
+                        // creezi obiect Message pentru prieten
+                        Message received = new Message(0, receivedMessageByte,
+                                System.currentTimeMillis(), /* senderId */ 999, /* groupId */ 0);
+
+                        runOnUiThread(() -> {
+                            messages.add(received);
+                            messageAdapter.notifyItemInserted(messages.size() - 1);
+                            recyclerView.scrollToPosition(messages.size() - 1);
                         });
                     }
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
             }).start();
-        }).start();
     }
 }
 
