@@ -90,6 +90,10 @@ public class LoginActivity extends AppCompatActivity {
                     }
 
                     if(response instanceof User){
+
+                        TcpConnection.setCurrentUser((User)response);
+                        TcpConnection.setCurrentUserId(((User) response).getId());
+
                         Intent intent = new Intent(LoginActivity.this, ConversationActivity.class);
                         startActivity(intent);
                     }

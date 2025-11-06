@@ -31,7 +31,6 @@ import chat.User;
 public class ConversationActivity extends AppCompatActivity {
     public List<Message> messages = new ArrayList<>();
     RecyclerView recyclerView;
-    int currentUserId = 1;
     MessageAdapter messageAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,13 +44,20 @@ public class ConversationActivity extends AppCompatActivity {
         });
 
         recyclerView = (RecyclerView)findViewById(R.id.recyclerViewMessages);
-        messageAdapter = new MessageAdapter(this, messages, currentUserId);
+        messageAdapter = new MessageAdapter(this, messages, TcpConnection.getCurrentUserId());
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(messageAdapter);
 
         View view = (View)findViewById(R.id.main);
         receiveMessage();
+
+        //test tastastatura ridicata
+        ViewCompat.setOnApplyWindowInsetsListener(view, (v, insets) -> {
+            int imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            view.setPadding(0, 0, 0, imeHeight + 4);
+            return insets;
+        });
     }
 
     @Override
@@ -89,7 +95,7 @@ public class ConversationActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> {
                     //la messages unde este 0 primul este id message si al doilea id group
-                    messages.add(new Message(0, messageByte, System.currentTimeMillis(), currentUserId, 0));
+                    messages.add(new Message(0, messageByte, System.currentTimeMillis(), TcpConnection.getCurrentUserId(), 0));
                     messageAdapter.notifyItemInserted(messages.size() - 1);
                     recyclerView.scrollToPosition(messages.size() - 1);
 

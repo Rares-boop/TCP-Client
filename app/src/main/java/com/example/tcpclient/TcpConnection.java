@@ -5,10 +5,16 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
+import chat.User;
+
 public class TcpConnection {
     private static Socket socket;
     private static ObjectOutputStream out;
     private static ObjectInputStream in;
+
+    public static User currentUser;
+
+    public static int currentUserId;
 
     public static void connect(String host, int port) throws IOException {
         socket = new Socket(host, port);
@@ -19,6 +25,22 @@ public class TcpConnection {
     public static Socket getSocket() { return socket; }
     public static ObjectOutputStream getOut() { return out; }
     public static ObjectInputStream getIn() { return in; }
+
+    public static User getCurrentUser() {
+        return currentUser;
+    }
+
+    public static void setCurrentUser(User currentUser) {
+        TcpConnection.currentUser = currentUser;
+    }
+
+    public static int getCurrentUserId() {
+        return currentUserId;
+    }
+
+    public static void setCurrentUserId(int currentUserId) {
+        TcpConnection.currentUserId = currentUserId;
+    }
 
     public static void close() {
         try {
