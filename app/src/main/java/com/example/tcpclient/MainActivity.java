@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
 
                 out.writeObject("OK");
 
-                response = in.readObject();
+                /*response = in.readObject();
                 if (response instanceof List) {
                     List<?> list = (List<?>) response;
                     if (!list.isEmpty() && list.get(0) instanceof GroupMember) {
@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(this,"Members " + groupMembers.size(), Toast.LENGTH_SHORT).show();
                         });
                     }
-                }
+                }*/
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {
