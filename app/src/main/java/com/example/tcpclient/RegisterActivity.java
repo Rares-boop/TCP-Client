@@ -96,7 +96,8 @@ public class RegisterActivity extends AppCompatActivity {
                         TcpConnection.setCurrentUser((User)response);
                         TcpConnection.setCurrentUserId(((User) response).getId());
 
-                        Intent intent = new Intent(RegisterActivity.this, ConversationActivity.class);
+                        //Intent intent = new Intent(RegisterActivity.this, ConversationActivity.class);
+                        Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                         startActivity(intent);
                     }
                     else if(response instanceof String){

@@ -3,6 +3,7 @@ package com.example.tcpclient;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -32,6 +33,9 @@ public class ConversationActivity extends AppCompatActivity {
     public List<Message> messages = new ArrayList<>();
     RecyclerView recyclerView;
     MessageAdapter messageAdapter;
+    Socket socket;
+    ObjectOutputStream out;
+    ObjectInputStream in;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,7 +54,6 @@ public class ConversationActivity extends AppCompatActivity {
         recyclerView.setAdapter(messageAdapter);
 
         View view = (View)findViewById(R.id.main);
-        receiveMessage();
 
         //test tastastatura ridicata
         ViewCompat.setOnApplyWindowInsetsListener(view, (v, insets) -> {
@@ -58,12 +61,47 @@ public class ConversationActivity extends AppCompatActivity {
             view.setPadding(0, 0, 0, imeHeight + 4);
             return insets;
         });
-    }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        TcpConnection.close();
+        socket = TcpConnection.getSocket();
+        out = TcpConnection.getOut();
+        in = TcpConnection.getIn();
+
+        new Thread(() -> {
+            try {
+                out.writeObject("GET_MESSAGES");
+                out.flush();
+
+                Object response = in.readObject();
+                if (response instanceof List) {
+                    List<?> list = (List<?>) response;
+                    if (!list.isEmpty() && list.get(0) instanceof Message) {
+                        messages.clear();
+                        messages.addAll((List<Message>) list);
+
+                        runOnUiThread(() -> messageAdapter.notifyDataSetChanged());
+                    }
+                }
+
+                while (true) {
+                    byte[] receivedMessageByte = (byte[]) in.readObject();
+                    String messageText = new String(receivedMessageByte);
+                    // creezi obiect Message pentru prieten
+                    Message received = new Message(0, receivedMessageByte,
+                            System.currentTimeMillis(), /* senderId  */ 999, /* groupId */ 0);
+
+                    runOnUiThread(() -> {
+                        messages.add(received);
+                        messageAdapter.notifyItemInserted(messages.size() - 1);
+                        recyclerView.scrollToPosition(messages.size() - 1);
+                    });
+                }
+
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        //receiveMessage();
     }
 
     public void handleMessage(View view) {
@@ -80,14 +118,7 @@ public class ConversationActivity extends AppCompatActivity {
         Toast.makeText(getApplicationContext(),"Sending message...",Toast.LENGTH_SHORT).show();
 
         new Thread(()->{
-            Socket socket = null;
-            ObjectOutputStream out = null;
-            ObjectInputStream in = null;
             try{
-                socket = TcpConnection.getSocket();
-                out = TcpConnection.getOut();
-                in = TcpConnection.getIn();
-
                 byte[] messageByte = message.getBytes();
 
                 out.writeObject(messageByte);
@@ -108,16 +139,15 @@ public class ConversationActivity extends AppCompatActivity {
         }).start();
     }
 
-    public void receiveMessage(){
+    /*public void receiveMessage(){
             new Thread(() -> {
                 try {
-                    ObjectInputStream in = TcpConnection.getIn();
                     while (true) {
                         byte[] receivedMessageByte = (byte[]) in.readObject();
                         String messageText = new String(receivedMessageByte);
                         // creezi obiect Message pentru prieten
                         Message received = new Message(0, receivedMessageByte,
-                                System.currentTimeMillis(), /* senderId */ 999, /* groupId */ 0);
+                                System.currentTimeMillis(),  senderId  999, groupId 0);
 
                         runOnUiThread(() -> {
                             messages.add(received);
@@ -129,6 +159,6 @@ public class ConversationActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }).start();
-    }
+    }*/
 }
 
