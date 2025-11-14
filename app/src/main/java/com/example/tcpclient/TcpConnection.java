@@ -11,6 +11,7 @@ public class TcpConnection {
     private static Socket socket;
     private static ObjectOutputStream out;
     private static ObjectInputStream in;
+    private static boolean listening = false;
 
     public static User currentUser;
 
@@ -40,6 +41,12 @@ public class TcpConnection {
 
     public static void setCurrentUserId(int currentUserId) {
         TcpConnection.currentUserId = currentUserId;
+    }
+
+    public static boolean isListening() { return listening; }
+    public static void startListening() { listening = true; }
+    public static void stopListening() {
+        listening = false;
     }
 
     public static void close() {

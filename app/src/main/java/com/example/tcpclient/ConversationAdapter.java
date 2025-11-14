@@ -18,7 +18,7 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
     private final Context context;
     private List<GroupChat> conversations;
     private final OnConversationClickListener listener;
-    //private final View.OnLongClickListener longClickListener;
+    private boolean enabled = true; // <<--- IMPORTANT
 
     public interface OnConversationClickListener {
         void onConversationClick(GroupChat chat);
@@ -28,6 +28,10 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
         this.context = context;
         this.conversations = conversations;
         this.listener = listener;
+    }
+
+    public void setEnabled(boolean value) {
+        this.enabled = value;
     }
 
     @NonNull
@@ -43,11 +47,11 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
         holder.groupName.setText(chat.getName());
         holder.groupInfo.setText("ID: " + chat.getId());
 
-        holder.itemView.setOnClickListener(v -> listener.onConversationClick(chat));
-
-        /*if(longClickListener!=null){
-            holder.itemView.setOnLongClickListener(longClickListener);
-        }*/
+        holder.itemView.setOnClickListener(v -> {
+            if (enabled) {            // <<--- IMPORTANT
+                listener.onConversationClick(chat);
+            }
+        });
     }
 
     @Override
@@ -69,4 +73,3 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
         }
     }
 }
-

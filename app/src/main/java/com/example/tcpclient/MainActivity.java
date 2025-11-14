@@ -1,13 +1,19 @@
 package com.example.tcpclient;
 
 import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -19,6 +25,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 
 import chat.GroupChat;
@@ -27,7 +34,6 @@ import chat.GroupMember;
 public class MainActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     ConversationAdapter adapter;
-    List<GroupChat> groupChats;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,11 +48,10 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerViewConversations);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        groupChats = LocalStorage.getCurrentUserGroupChats();
 
         adapter = new ConversationAdapter(
                 this,
-                groupChats,
+                LocalStorage.getCurrentUserGroupChats(),
                 chat -> handleChatClick(chat)
         );
 
@@ -83,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                out.writeObject("OK");
+                //out.writeObject("OK");
 
                 /*response = in.readObject();
                 if (response instanceof List) {
@@ -144,6 +149,114 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void handleAddConversation(View view) {
-        Toast.makeText(MainActivity.this, "Add conversation logic...",Toast.LENGTH_SHORT).show();
+
+        adapter.setEnabled(false);
+
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_with_spinner, null);
+
+        EditText editGroupName = dialogView.findViewById(R.id.editGroupName);
+        Spinner spinner = dialogView.findViewById(R.id.mySpinner);
+
+        ArrayAdapter<String> initialAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Loading...", "Please wait"}
+        );
+        spinner.setAdapter(initialAdapter);
+
+        List<Integer> userIds = new ArrayList<>();
+        List<String> userNames = new ArrayList<>();
+
+        AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Add a new conversation")
+                .setView(dialogView)
+                .setNegativeButton("Cancel", (d, w) -> d.cancel())
+                .setPositiveButton("OK", (d, w) -> {
+
+                    String groupName = editGroupName.getText().toString().trim();
+                    if (groupName.isEmpty()) {
+                        Toast.makeText(this, "Enter a group name!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    int index = spinner.getSelectedItemPosition();
+                    if (index < 0 || index >= userIds.size()) {
+                        Toast.makeText(this, "No user selected!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    int selectedUserId = userIds.get(index);
+
+                    new Thread(() -> {
+                        try {
+                            ObjectOutputStream out = TcpConnection.getOut();
+                            ObjectInputStream in = TcpConnection.getIn();
+
+                            String payload = selectedUserId + "," + groupName;
+                            out.writeObject(payload);
+                            out.flush();
+
+                            Object response = in.readObject();
+
+                            runOnUiThread(() -> {
+                                if (response instanceof GroupChat) {
+                                    GroupChat newGroup = (GroupChat) response;
+
+                                    List<GroupChat> updatedList = LocalStorage.getCurrentUserGroupChats();
+                                    updatedList.add(newGroup);
+                                    LocalStorage.setCurrentUserGroupChats(updatedList);
+
+                                    adapter.setGroupChats(updatedList);
+                                    adapter.notifyDataSetChanged();
+
+                                    adapter.setEnabled(true);
+
+                                    Toast.makeText(this, "Created new group", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    adapter.setEnabled(true);
+                                    Toast.makeText(this, "Group already exists", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+
+                }).create();
+
+        dialog.show();
+
+        new Thread(() -> {
+            try {
+                ObjectOutputStream out = TcpConnection.getOut();
+                ObjectInputStream in = TcpConnection.getIn();
+
+                out.writeObject("ADD_CONVERSATION");
+                out.flush();
+
+                List<String> listFromServer = (List<String>) in.readObject();
+
+                userIds.clear();
+                userNames.clear();
+                for (String s : listFromServer) {
+                    String[] parts = s.split(",");
+                    userIds.add(Integer.parseInt(parts[0]));
+                    userNames.add(parts[1]);
+                }
+
+                runOnUiThread(() -> {
+                    ArrayAdapter<String> realAdapter = new ArrayAdapter<>(
+                            MainActivity.this,
+                            android.R.layout.simple_spinner_dropdown_item,
+                            userNames
+                    );
+                    spinner.setAdapter(realAdapter);
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 }

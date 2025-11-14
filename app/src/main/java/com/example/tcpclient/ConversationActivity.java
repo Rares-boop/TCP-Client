@@ -1,13 +1,17 @@
 package com.example.tcpclient;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,6 +51,20 @@ public class ConversationActivity extends AppCompatActivity {
             return insets;
         });
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            OnBackInvokedCallback callback = new OnBackInvokedCallback() {
+                @Override
+                public void onBackInvoked() {
+                    handleBackPress();
+                }
+            };
+
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    callback
+            );
+        }
+
         recyclerView = (RecyclerView)findViewById(R.id.recyclerViewMessages);
         messageAdapter = new MessageAdapter(this, messages, TcpConnection.getCurrentUserId());
 
@@ -66,6 +84,7 @@ public class ConversationActivity extends AppCompatActivity {
         out = TcpConnection.getOut();
         in = TcpConnection.getIn();
 
+        TcpConnection.startListening();
         new Thread(() -> {
             try {
                 out.writeObject("GET_MESSAGES");
@@ -82,7 +101,7 @@ public class ConversationActivity extends AppCompatActivity {
                     }
                 }
 
-                while (true) {
+                while (TcpConnection.isListening()) {
                     byte[] receivedMessageByte = (byte[]) in.readObject();
                     String messageText = new String(receivedMessageByte);
                     // creezi obiect Message pentru prieten
@@ -96,12 +115,26 @@ public class ConversationActivity extends AppCompatActivity {
                     });
                 }
 
+                out.writeObject("PAUSE_CONVERSATION");
+                out.flush();
+
+//                runOnUiThread(()->{
+//                    Intent intent = new Intent(this,MainActivity.class);
+//                    startActivity(intent);
+//                });
+
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }).start();
 
         //receiveMessage();
+    }
+
+    @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
+    @Override
+    public void onBackPressed() {
+        handleBackPress();
     }
 
     public void handleMessage(View view) {
@@ -137,6 +170,13 @@ public class ConversationActivity extends AppCompatActivity {
                 throw new RuntimeException(e);
             }
         }).start();
+    }
+
+    public void handleBackPress() {
+        Toast.makeText(this, "Leaving conversation...", Toast.LENGTH_SHORT).show();
+        TcpConnection.stopListening();
+
+        finish();
     }
 
     /*public void receiveMessage(){
