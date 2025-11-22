@@ -3,14 +3,18 @@ package com.example.tcpclient;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -52,10 +56,25 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ConversationAdapter(
                 this,
                 LocalStorage.getCurrentUserGroupChats(),
-                chat -> handleChatClick(chat)
+                chat -> handleChatClick(chat),
+                chat -> handleLongChatClick(chat)
         );
 
         recyclerView.setAdapter(adapter);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            OnBackInvokedCallback callback = new OnBackInvokedCallback() {
+                @Override
+                public void onBackInvoked() {
+                    handleLogout();
+                }
+            };
+
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    callback
+            );
+        }
 
     }
 
@@ -111,6 +130,13 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
+    @Override
+    public void onBackPressed() {
+        //super.onBackPressed();
+        handleLogout();
+    }
+
     public void handleChatClick(GroupChat chat) {
         new Thread(() -> {
             try {
@@ -146,6 +172,134 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
         }).start();
+    }
+
+    public void handleLongChatClick(GroupChat chat){
+        //Toast.makeText(this, chat.toString(), Toast.LENGTH_SHORT).show();
+        AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
+                .setTitle(chat.getName())
+                .setItems(new String[]{"Rename ", "Delete "},(dialog, which)->{
+                    if(which == 0){
+                        renameChat(chat);
+                    }
+                    else{
+                        deleteChat(chat);
+                    }
+                }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                }).create();
+        alertDialog.show();
+    }
+
+    public void renameChat(GroupChat chat){
+        //Toast.makeText(this, String.valueOf(chat.getName()), Toast.LENGTH_SHORT).show();
+        EditText input = new EditText(this);
+        input.setHint("Enter the new name ");
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Rename "+chat.getName())
+                .setView(input)
+                .setPositiveButton("Save ",(dialog, which)->{
+                    String newName = input.getText().toString().trim();
+                    if(!newName.isEmpty()){
+                        new Thread(()->{
+
+                            Socket socket = null;
+                            ObjectOutputStream out = null;
+                            ObjectInputStream in = null;
+                            try{
+                                socket = TcpConnection.getSocket();
+                                out = TcpConnection.getOut();
+                                in = TcpConnection.getIn();
+
+                                String request = "UPDATE" +","+chat.getId() + ","+newName;
+
+                                out.writeObject(request);
+                                out.flush();
+
+                                String response = (String)in.readObject();
+
+                                if(response.equalsIgnoreCase("OK")){
+                                    List<GroupChat> currentGroupChats = LocalStorage.getCurrentUserGroupChats();
+                                    currentGroupChats.stream()
+                                            .filter(c -> c.getId() == chat.getId())
+                                            .findFirst()
+                                            .ifPresent(c -> c.setName(newName));
+
+                                    LocalStorage.setCurrentUserGroupChats(currentGroupChats);
+
+                                    //update adapter
+                                    runOnUiThread(()->adapter.notifyDataSetChanged());
+                                }
+                                else if(response.equalsIgnoreCase("NOT_FOUND")){
+                                    runOnUiThread(()->
+                                            Toast.makeText(this, chat.getName() + " was not found ",
+                                                    Toast.LENGTH_SHORT).show());
+                                }
+
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            } catch (ClassNotFoundException e) {
+                                throw new RuntimeException(e);
+                            }
+
+                        }).start();
+                    }
+                })
+                .setNegativeButton("Cancel ",(dialog, which)->dialog.cancel())
+                .create().show();
+    }
+
+    public void deleteChat(GroupChat chat){
+        //Toast.makeText(this, chat.getId(), Toast.LENGTH_SHORT).show();
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Delete chat ")
+                .setMessage("Are you sure you want to delete \"" + chat.getName() + "\"?")
+                .setPositiveButton("Delete ",(dialog, which)->{
+                    new Thread(()->{
+                        Socket socket = null;
+                        ObjectOutputStream out = null;
+                        ObjectInputStream in =null;
+
+                        try{
+                            socket = TcpConnection.getSocket();
+                            out = TcpConnection.getOut();
+                            in = TcpConnection.getIn();
+
+                            String request = "DELETE" + "," + chat.getId();
+
+                            out.writeObject(request);
+                            out.flush();
+
+                            String response = (String)in.readObject();
+
+                            if(response.equalsIgnoreCase("OK")){
+                                List<GroupChat> currentGroupChats = LocalStorage.getCurrentUserGroupChats();
+                                int index = currentGroupChats.indexOf(chat);
+
+                                currentGroupChats.remove(index);
+                                LocalStorage.setCurrentUserGroupChats(currentGroupChats);
+
+                                //update adapter
+                                runOnUiThread(()->adapter.notifyDataSetChanged());
+                            }
+                            else{
+                                runOnUiThread(()->
+                                        Toast.makeText(this, chat.getName() + " was not found ",
+                                                Toast.LENGTH_SHORT).show());
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            throw new RuntimeException(e);
+                        }
+
+                    }).start();
+                }).setNegativeButton("Cancel ",(dialog, which)->dialog.cancel())
+                .create().show();
     }
 
     public void handleAddConversation(View view) {
@@ -258,5 +412,54 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    public void handleLogout(){
+        //Toast.makeText(this,"Back press logic... ",Toast.LENGTH_SHORT).show();
+
+        if(adapter != null){
+            adapter.setEnabled(false);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Do you wish to logout ")
+                .setNegativeButton("NO ", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int which) {
+
+                        dialogInterface.cancel();
+                    }
+                })
+                .setPositiveButton("YES ", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        new Thread(()->{
+                            try {
+                                ObjectOutputStream out = TcpConnection.getOut();
+
+                                if (out != null) {
+                                    out.writeObject("LOGOUT");
+                                    out.flush();
+                                }
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+
+                            TcpConnection.stopListening();
+                            TcpConnection.close();
+
+                            runOnUiThread(() -> {
+                                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                                startActivity(intent);
+                                finish();
+                            });
+
+                        }).start();
+                    }
+                }).create();
+
+        dialog.show();
     }
 }

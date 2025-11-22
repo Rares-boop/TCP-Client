@@ -93,7 +93,7 @@ public class LoginActivity extends AppCompatActivity {
 
                         TcpConnection.setCurrentUser((User)response);
                         TcpConnection.setCurrentUserId(((User) response).getId());
-
+                        
                         //Intent intent = new Intent(LoginActivity.this, ConversationActivity.class);
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         startActivity(intent);

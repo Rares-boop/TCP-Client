@@ -91,6 +91,12 @@ public class ConversationActivity extends AppCompatActivity {
                 out.flush();
 
                 Object response = in.readObject();
+                if(response != null) {
+                    Log.e("#2345", response.toString());
+                }
+                else{
+                    Log.e("#2345","S A DUS PE PULA ");
+                }
                 if (response instanceof List) {
                     List<?> list = (List<?>) response;
                     if (!list.isEmpty() && list.get(0) instanceof Message) {
@@ -98,6 +104,9 @@ public class ConversationActivity extends AppCompatActivity {
                         messages.addAll((List<Message>) list);
 
                         runOnUiThread(() -> messageAdapter.notifyDataSetChanged());
+
+                        messages.stream().forEach(message ->
+                                runOnUiThread( ()-> Toast.makeText(this, message.toString(),Toast.LENGTH_SHORT)));
                     }
                 }
 

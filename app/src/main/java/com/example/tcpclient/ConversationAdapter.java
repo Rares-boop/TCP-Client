@@ -20,14 +20,23 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
     private final OnConversationClickListener listener;
     private boolean enabled = true; // <<--- IMPORTANT
 
+    private final OnConversationLongClickListener longClickListener;
+
     public interface OnConversationClickListener {
         void onConversationClick(GroupChat chat);
     }
 
-    public ConversationAdapter(Context context, List<GroupChat> conversations, OnConversationClickListener listener) {
+    public interface OnConversationLongClickListener {
+        void onConversationLongClick(GroupChat chat);
+    }
+
+    public ConversationAdapter(Context context, List<GroupChat> conversations,
+                               OnConversationClickListener listener,
+                               OnConversationLongClickListener longClickListener) {
         this.context = context;
         this.conversations = conversations;
         this.listener = listener;
+        this.longClickListener = longClickListener;
     }
 
     public void setEnabled(boolean value) {
@@ -51,6 +60,13 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
             if (enabled) {            // <<--- IMPORTANT
                 listener.onConversationClick(chat);
             }
+        });
+        holder.itemView.setOnLongClickListener(v -> {
+            if (enabled && longClickListener != null) {
+                longClickListener.onConversationLongClick(chat);
+                return true; // IMPORTANT: consumă eventul
+            }
+            return false;
         });
     }
 
