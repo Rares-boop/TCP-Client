@@ -24,7 +24,7 @@ import java.net.Socket;
 import chat.User;
 
 public class RegisterActivity extends AppCompatActivity {
-
+    private ConfigReader config;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,6 +35,8 @@ public class RegisterActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        config = new ConfigReader(this);
     }
 
     @Override
@@ -68,7 +70,7 @@ public class RegisterActivity extends AppCompatActivity {
             ObjectOutputStream out = null;
             ObjectInputStream in = null;
             try{
-                TcpConnection.connect("192.168.1.132",15555);
+                TcpConnection.connect(config.getServerIp(),config.getServerPort());
                 socket = TcpConnection.getSocket();
                 out = TcpConnection.getOut();
                 in = TcpConnection.getIn();
