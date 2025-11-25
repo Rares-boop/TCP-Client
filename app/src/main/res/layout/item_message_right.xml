@@ -5,12 +5,28 @@
     android:gravity="end"
     android:padding="8dp">
 
-    <TextView
-        android:id="@+id/message_text"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_message_right"
-        android:textColor="@android:color/white"
-        android:padding="10dp"
-        android:textSize="16sp" />
+        android:orientation="vertical"
+        android:gravity="end">
+
+        <TextView
+            android:id="@+id/message_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_message_right"
+            android:textColor="@android:color/white"
+            android:padding="10dp"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/message_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#444444"
+            android:textSize="11sp"
+            android:paddingTop="4dp"/>
+    </LinearLayout>
+
 </LinearLayout>
