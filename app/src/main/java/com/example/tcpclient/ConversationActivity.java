@@ -95,7 +95,7 @@ public class ConversationActivity extends AppCompatActivity {
                     Log.e("#2345", response.toString());
                 }
                 else{
-                    Log.e("#2345","S A DUS PE PULA ");
+                    Log.e("#2345","GET_MESSAGES ERROR ");
                 }
                 if (response instanceof List) {
                     List<?> list = (List<?>) response;

@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/chat_bg"
     tools:context=".ConversationActivity">
 
     <androidx.recyclerview.widget.RecyclerView
@@ -12,6 +13,7 @@
         android:layout_width="0dp"
         android:layout_height="575dp"
         android:padding="8dp"
+        android:background="@android:color/transparent"
         app:layout_constraintBottom_toTopOf="@id/editTextMessage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
