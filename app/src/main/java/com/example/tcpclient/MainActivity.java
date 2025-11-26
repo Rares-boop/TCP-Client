@@ -338,18 +338,7 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("Add a new conversation")
                 .setView(dialogView)
                 .setNegativeButton("Cancel", (d, w) ->{
-                    new Thread(()->{
-                        try {
-                            ObjectOutputStream out = TcpConnection.getOut();
-                            ObjectInputStream in = TcpConnection.getIn();
-
-                            out.writeObject("RST");
-                            out.flush();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }).start();
-
+                    sendCancelDialogMessage();
                     d.cancel();
                 })
                 .setPositiveButton("OK", (d, w) -> {
@@ -358,17 +347,7 @@ public class MainActivity extends AppCompatActivity {
                     if (groupName.isEmpty()) {
                         Toast.makeText(this, "Enter a group name!", Toast.LENGTH_SHORT).show();
 
-                        new Thread(()->{
-                            try {
-                                ObjectOutputStream out = TcpConnection.getOut();
-                                ObjectInputStream in = TcpConnection.getIn();
-
-                                out.writeObject("RST");
-                                out.flush();
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).start();
+                        sendCancelDialogMessage();
 
                         return;
                     }
@@ -424,15 +403,18 @@ public class MainActivity extends AppCompatActivity {
 
         dialog.getWindow().getDecorView().setOnTouchListener((v, event)->{
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                Toast.makeText(MainActivity.this, "Please complete this first!", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Please complete this first!", Toast.LENGTH_SHORT).show();
+                sendCancelDialogMessage();
+                dialog.cancel();
             }
             return true;
         });
 
         dialog.setOnKeyListener((d, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-                // Aici afișezi toast-ul
-                Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+                sendCancelDialogMessage();
+                dialog.cancel();
                 return true;
             }
             return false;
@@ -518,5 +500,19 @@ public class MainActivity extends AppCompatActivity {
                 }).create();
 
         dialog.show();
+    }
+
+    public void sendCancelDialogMessage(){
+        new Thread(()->{
+            try {
+                ObjectOutputStream out = TcpConnection.getOut();
+                ObjectInputStream in = TcpConnection.getIn();
+
+                out.writeObject("RST");
+                out.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 }
