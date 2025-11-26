@@ -6,7 +6,9 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -38,6 +40,8 @@ import chat.GroupMember;
 public class MainActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     ConversationAdapter adapter;
+
+    AlertDialog dialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +70,10 @@ public class MainActivity extends AppCompatActivity {
             OnBackInvokedCallback callback = new OnBackInvokedCallback() {
                 @Override
                 public void onBackInvoked() {
+                    if (dialog != null && dialog.isShowing()) {
+                        Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     handleLogout();
                 }
             };
@@ -134,6 +142,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         //super.onBackPressed();
+        if (dialog != null && dialog.isShowing()) {
+            Toast.makeText(this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+            return;
+        }
         handleLogout();
     }
 
@@ -322,15 +334,42 @@ public class MainActivity extends AppCompatActivity {
         List<Integer> userIds = new ArrayList<>();
         List<String> userNames = new ArrayList<>();
 
-        AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+         dialog = new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Add a new conversation")
                 .setView(dialogView)
-                .setNegativeButton("Cancel", (d, w) -> d.cancel())
+                .setNegativeButton("Cancel", (d, w) ->{
+                    new Thread(()->{
+                        try {
+                            ObjectOutputStream out = TcpConnection.getOut();
+                            ObjectInputStream in = TcpConnection.getIn();
+
+                            out.writeObject("RST");
+                            out.flush();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }).start();
+
+                    d.cancel();
+                })
                 .setPositiveButton("OK", (d, w) -> {
 
                     String groupName = editGroupName.getText().toString().trim();
                     if (groupName.isEmpty()) {
                         Toast.makeText(this, "Enter a group name!", Toast.LENGTH_SHORT).show();
+
+                        new Thread(()->{
+                            try {
+                                ObjectOutputStream out = TcpConnection.getOut();
+                                ObjectInputStream in = TcpConnection.getIn();
+
+                                out.writeObject("RST");
+                                out.flush();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }).start();
+
                         return;
                     }
 
@@ -379,7 +418,25 @@ public class MainActivity extends AppCompatActivity {
 
                 }).create();
 
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
         dialog.show();
+
+        dialog.getWindow().getDecorView().setOnTouchListener((v, event)->{
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                Toast.makeText(MainActivity.this, "Please complete this first!", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        });
+
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                // Aici afișezi toast-ul
+                Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
+        });
 
         new Thread(() -> {
             try {
