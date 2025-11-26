@@ -339,6 +339,8 @@ public class MainActivity extends AppCompatActivity {
                 .setView(dialogView)
                 .setNegativeButton("Cancel", (d, w) ->{
                     sendCancelDialogMessage();
+                    adapter.setEnabled(true);
+
                     d.cancel();
                 })
                 .setPositiveButton("OK", (d, w) -> {
@@ -348,6 +350,7 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(this, "Enter a group name!", Toast.LENGTH_SHORT).show();
 
                         sendCancelDialogMessage();
+                        adapter.setEnabled(true);
 
                         return;
                     }
@@ -405,6 +408,8 @@ public class MainActivity extends AppCompatActivity {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 //Toast.makeText(MainActivity.this, "Please complete this first!", Toast.LENGTH_SHORT).show();
                 sendCancelDialogMessage();
+                adapter.setEnabled(true);
+
                 dialog.cancel();
             }
             return true;
@@ -414,6 +419,8 @@ public class MainActivity extends AppCompatActivity {
             if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
                 //Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
                 sendCancelDialogMessage();
+                adapter.setEnabled(true);
+
                 dialog.cancel();
                 return true;
             }
@@ -466,6 +473,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int which) {
 
+                        adapter.setEnabled(true);
                         dialogInterface.cancel();
                     }
                 })
@@ -499,7 +507,30 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }).create();
 
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
         dialog.show();
+
+        dialog.getWindow().getDecorView().setOnTouchListener((v, event)->{
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                //Toast.makeText(MainActivity.this, "Please complete this first!", Toast.LENGTH_SHORT).show();
+                adapter.setEnabled(true);
+
+                dialog.cancel();
+            }
+            return true;
+        });
+
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                //Toast.makeText(MainActivity.this, "Finalizează acțiunea înainte de a ieși!", Toast.LENGTH_SHORT).show();
+                adapter.setEnabled(true);
+
+                dialog.cancel();
+                return true;
+            }
+            return false;
+        });
     }
 
     public void sendCancelDialogMessage(){
