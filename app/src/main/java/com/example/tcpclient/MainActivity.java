@@ -114,22 +114,6 @@ public class MainActivity extends AppCompatActivity {
                         });
                     }
                 }
-
-                //out.writeObject("OK");
-
-                /*response = in.readObject();
-                if (response instanceof List) {
-                    List<?> list = (List<?>) response;
-                    if (!list.isEmpty() && list.get(0) instanceof GroupMember) {
-                        @SuppressWarnings("unchecked")
-                        List<GroupMember> groupMembers = (List<GroupMember>) list;
-                        LocalStorage.setCurrentUserGroupMembers(groupMembers);
-                        //System.out.println("Received group members: " + groupMembers.size());
-                        runOnUiThread(()->{
-                            Toast.makeText(this,"Members " + groupMembers.size(), Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                }*/
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {
