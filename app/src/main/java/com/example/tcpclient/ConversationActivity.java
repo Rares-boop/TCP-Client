@@ -52,20 +52,6 @@ public class ConversationActivity extends AppCompatActivity {
             return insets;
         });
 
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-//            OnBackInvokedCallback callback = new OnBackInvokedCallback() {
-//                @Override
-//                public void onBackInvoked() {
-//                    handleBackPress();
-//                }
-//            };
-//
-//            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-//                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-//                    callback
-//            );
-//        }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT,
@@ -91,7 +77,6 @@ public class ConversationActivity extends AppCompatActivity {
         out = TcpConnection.getOut();
         in = TcpConnection.getIn();
 
-        TcpConnection.startListening();
         new Thread(() -> {
             try {
                 synchronized (out) {
@@ -120,12 +105,6 @@ public class ConversationActivity extends AppCompatActivity {
                 }
 
                 while (isRunning) {
-                    /*byte[] receivedMessageByte = (byte[]) in.readObject();
-                    String messageText = new String(receivedMessageByte);*/
-                    // creezi obiect Message pentru prieten
-//                    Message received = new Message(0, receivedMessageByte,
-//                            System.currentTimeMillis(), /* senderId  */ 999, /* groupId */ 0);
-
                     try{
                         Object incoming = in.readObject();
 
@@ -143,9 +122,8 @@ public class ConversationActivity extends AppCompatActivity {
                         }
                         else if (incoming instanceof String) {
                             String command = (String) incoming;
-                            // Daca serverul ne confirma ca a oprit conversatia
                             if (command.equals("STOPPED_LISTENING")) {
-                                isRunning = false; // Oprim bucla
+                                isRunning = false;
                                 break;
                             }
                         }
@@ -154,17 +132,7 @@ public class ConversationActivity extends AppCompatActivity {
                         isRunning = false;
                         break;
                     }
-
-                    /*runOnUiThread(() -> {
-                        messages.add(received);
-                        messageAdapter.notifyItemInserted(messages.size() - 1);
-                        recyclerView.scrollToPosition(messages.size() - 1);
-                    });*/
                 }
-
-//                out.writeObject("PAUSE_CONVERSATION");
-//                out.flush();
-
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
@@ -217,7 +185,6 @@ public class ConversationActivity extends AppCompatActivity {
 
     public void handleBackPress() {
         Toast.makeText(this, "Leaving conversation...", Toast.LENGTH_SHORT).show();
-        TcpConnection.stopListening();
 
         new Thread(()->{
             ObjectOutputStream out = null;
@@ -230,9 +197,18 @@ public class ConversationActivity extends AppCompatActivity {
                         out.flush();
                     }
                 }
+
+                int attempts = 0;
+                while (isRunning && attempts < 20) {
+                    Thread.sleep(100);
+                    attempts++;
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
-            }finally {
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
                 runOnUiThread(this::finish);
             }
         }).start();
