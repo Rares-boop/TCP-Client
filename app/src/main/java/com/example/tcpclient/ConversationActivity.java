@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chat.Message;
-import chat.User;
 
 public class ConversationActivity extends AppCompatActivity {
     public List<Message> messages = new ArrayList<>();
@@ -137,7 +136,6 @@ public class ConversationActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }).start();
-
     }
 
     @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
