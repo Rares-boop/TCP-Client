@@ -40,6 +40,7 @@ public class ConversationActivity extends AppCompatActivity {
     Socket socket;
     ObjectOutputStream out;
     ObjectInputStream in;
+    private volatile boolean isRunning = true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,17 +52,24 @@ public class ConversationActivity extends AppCompatActivity {
             return insets;
         });
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            OnBackInvokedCallback callback = new OnBackInvokedCallback() {
-                @Override
-                public void onBackInvoked() {
-                    handleBackPress();
-                }
-            };
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//            OnBackInvokedCallback callback = new OnBackInvokedCallback() {
+//                @Override
+//                public void onBackInvoked() {
+//                    handleBackPress();
+//                }
+//            };
+//
+//            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+//                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+//                    callback
+//            );
+//        }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                    callback
+                    this::handleBackPress
             );
         }
 
@@ -73,7 +81,6 @@ public class ConversationActivity extends AppCompatActivity {
 
         View view = (View)findViewById(R.id.main);
 
-        //test tastastatura ridicata
         ViewCompat.setOnApplyWindowInsetsListener(view, (v, insets) -> {
             int imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
             view.setPadding(0, 0, 0, imeHeight + 4);
@@ -87,8 +94,10 @@ public class ConversationActivity extends AppCompatActivity {
         TcpConnection.startListening();
         new Thread(() -> {
             try {
-                out.writeObject("GET_MESSAGES");
-                out.flush();
+                synchronized (out) {
+                    out.writeObject("GET_MESSAGES");
+                    out.flush();
+                }
 
                 Object response = in.readObject();
                 if(response != null) {
@@ -110,34 +119,57 @@ public class ConversationActivity extends AppCompatActivity {
                     }
                 }
 
-                while (TcpConnection.isListening()) {
-                    byte[] receivedMessageByte = (byte[]) in.readObject();
-                    String messageText = new String(receivedMessageByte);
+                while (isRunning) {
+                    /*byte[] receivedMessageByte = (byte[]) in.readObject();
+                    String messageText = new String(receivedMessageByte);*/
                     // creezi obiect Message pentru prieten
-                    Message received = new Message(0, receivedMessageByte,
-                            System.currentTimeMillis(), /* senderId  */ 999, /* groupId */ 0);
+//                    Message received = new Message(0, receivedMessageByte,
+//                            System.currentTimeMillis(), /* senderId  */ 999, /* groupId */ 0);
 
-                    runOnUiThread(() -> {
+                    try{
+                        Object incoming = in.readObject();
+
+                        if (incoming instanceof byte[]) {
+                            // E un mesaj normal
+                            byte[] receivedMessageByte = (byte[]) incoming;
+                            Message received = new Message(0, receivedMessageByte,
+                                    System.currentTimeMillis(), 999, 0);
+
+                            runOnUiThread(() -> {
+                                messages.add(received);
+                                messageAdapter.notifyItemInserted(messages.size() - 1);
+                                recyclerView.scrollToPosition(messages.size() - 1);
+                            });
+                        }
+                        else if (incoming instanceof String) {
+                            String command = (String) incoming;
+                            // Daca serverul ne confirma ca a oprit conversatia
+                            if (command.equals("STOPPED_LISTENING")) {
+                                isRunning = false; // Oprim bucla
+                                break;
+                            }
+                        }
+
+                    }catch (Exception e){
+                        isRunning = false;
+                        break;
+                    }
+
+                    /*runOnUiThread(() -> {
                         messages.add(received);
                         messageAdapter.notifyItemInserted(messages.size() - 1);
                         recyclerView.scrollToPosition(messages.size() - 1);
-                    });
+                    });*/
                 }
 
-                out.writeObject("PAUSE_CONVERSATION");
-                out.flush();
-
-//                runOnUiThread(()->{
-//                    Intent intent = new Intent(this,MainActivity.class);
-//                    startActivity(intent);
-//                });
+//                out.writeObject("PAUSE_CONVERSATION");
+//                out.flush();
 
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }).start();
 
-        //receiveMessage();
     }
 
     @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
@@ -163,8 +195,10 @@ public class ConversationActivity extends AppCompatActivity {
             try{
                 byte[] messageByte = message.getBytes();
 
-                out.writeObject(messageByte);
-                out.flush();
+                synchronized (out) {
+                    out.writeObject(messageByte);
+                    out.flush();
+                }
 
                 runOnUiThread(() -> {
                     //la messages unde este 0 primul este id message si al doilea id group
@@ -185,29 +219,23 @@ public class ConversationActivity extends AppCompatActivity {
         Toast.makeText(this, "Leaving conversation...", Toast.LENGTH_SHORT).show();
         TcpConnection.stopListening();
 
-        finish();
-    }
+        new Thread(()->{
+            ObjectOutputStream out = null;
+            try{
+                out = TcpConnection.getOut();
 
-    /*public void receiveMessage(){
-            new Thread(() -> {
-                try {
-                    while (true) {
-                        byte[] receivedMessageByte = (byte[]) in.readObject();
-                        String messageText = new String(receivedMessageByte);
-                        // creezi obiect Message pentru prieten
-                        Message received = new Message(0, receivedMessageByte,
-                                System.currentTimeMillis(),  senderId  999, groupId 0);
-
-                        runOnUiThread(() -> {
-                            messages.add(received);
-                            messageAdapter.notifyItemInserted(messages.size() - 1);
-                            recyclerView.scrollToPosition(messages.size() - 1);
-                        });
+                if(out != null) {
+                    synchronized (out) {
+                        out.writeObject("PAUSE_CONVERSATION");
+                        out.flush();
                     }
-                } catch (IOException | ClassNotFoundException e) {
-                    e.printStackTrace();
                 }
-            }).start();
-    }*/
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }finally {
+                runOnUiThread(this::finish);
+            }
+        }).start();
+    }
 }
 
