@@ -1,6 +1,7 @@
 package com.example.tcpclient;
 
 import android.content.Context;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,8 +12,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import chat.Message;
 
@@ -53,10 +56,49 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         Message message = messages.get(position);
         holder.messageText.setText(new String(message.getContent()));
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         String time = sdf.format(new Date(message.getTimestamp()));
 
         holder.messageTime.setText(time);
+
+        long currentTs = message.getTimestamp();
+        long previousTs = 0;
+
+        // Dacă există un mesaj anterior, îi luăm timpul
+        if (position > 0) {
+            previousTs = messages.get(position - 1).getTimestamp();
+        }
+
+        // Dacă e primul mesaj SAU ziua e diferită față de mesajul anterior
+        if (position == 0 || !isSameDay(currentTs, previousTs)) {
+            holder.dateHeader.setVisibility(View.VISIBLE);
+            holder.dateHeader.setText(getFormattedDate(currentTs));
+        } else {
+            // Dacă e aceeași zi, ascunde header-ul
+            holder.dateHeader.setVisibility(View.GONE);
+        }
+    }
+
+    private boolean isSameDay(long ts1, long ts2) {
+        Calendar cal1 = Calendar.getInstance();
+        Calendar cal2 = Calendar.getInstance();
+        cal1.setTimeInMillis(ts1);
+        cal2.setTimeInMillis(ts2);
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private String getFormattedDate(long timestamp) {
+        // Folosim DateUtils pentru "Azi" și "Ieri" automat
+        if (DateUtils.isToday(timestamp)) {
+            return "Azi";
+        } else if (DateUtils.isToday(timestamp + DateUtils.DAY_IN_MILLIS)) {
+            return "Ieri";
+        } else {
+            // Altfel afișăm data normal (ex: 28 Nov 2025)
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
+            return sdf.format(new Date(timestamp));
+        }
     }
 
     @Override
@@ -67,10 +109,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     static class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView messageTime;
+        TextView dateHeader;
         MessageViewHolder(View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
             messageTime = itemView.findViewById(R.id.message_time);
+
+            dateHeader = itemView.findViewById(R.id.text_date_header);
         }
     }
 }
