@@ -3,6 +3,7 @@ package com.example.tcpclient;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,6 +37,7 @@ import java.util.List;
 
 import chat.GroupChat;
 import chat.GroupMember;
+import chat.User;
 
 public class MainActivity extends AppCompatActivity {
     RecyclerView recyclerView;
@@ -86,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    @SuppressLint("NotifyDataSetChanged")
+    /*@SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onStart() {
         super.onStart();
@@ -120,6 +122,18 @@ public class MainActivity extends AppCompatActivity {
                 throw new RuntimeException(e);
             }
         }).start();
+    }*/
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Socket socket = TcpConnection.getSocket();
+        if(socket == null || socket.isClosed() || !socket.isConnected()){
+            attemptAutoReconnect();
+        }
+        else{
+            refreshConversations();
+        }
     }
 
     @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
@@ -480,6 +494,9 @@ public class MainActivity extends AppCompatActivity {
                             TcpConnection.close();
 
                             runOnUiThread(() -> {
+                                SharedPreferences prefs = SecureStorage.getEncryptedPrefs(MainActivity.this);
+                                prefs.edit().clear().apply();
+
                                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -530,4 +547,96 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
+
+    private void goToLogin(){
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        startActivity(intent);
+
+        finish();
+    }
+
+    private void attemptAutoReconnect(){
+        SharedPreferences preferences = SecureStorage.getEncryptedPrefs(getApplicationContext());
+
+        String savedUser = preferences.getString("username", null);
+        String savedPassword = preferences.getString("password", null);
+
+        if(savedUser == null || savedPassword == null){
+            goToLogin();
+            return;
+        }
+
+        new Thread(()->{
+            try{
+                ConfigReader configReader = new ConfigReader(this);
+                TcpConnection.connect(configReader.getServerIp(), configReader.getServerPort());
+
+                ObjectOutputStream out = TcpConnection.getOut();
+                ObjectInputStream in = TcpConnection.getIn();
+
+                out.writeObject("GET_LOGIN");
+                out.flush();
+
+                out.writeObject(savedUser+","+savedPassword);
+                out.flush();
+
+                Object response = in.readObject();
+
+                if(response instanceof User){
+                    User user = (User)response;
+
+                    TcpConnection.setCurrentUser(user);
+                    TcpConnection.setCurrentUserId(user.getId());
+
+                    runOnUiThread(()->{
+                        Toast.makeText(this, "Reconnected automatically", Toast.LENGTH_SHORT).show();
+                        refreshConversations();
+                    });
+                }
+                else{
+                    runOnUiThread(this::goToLogin);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(this::goToLogin);
+            }
+        }).start();
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private void refreshConversations() {
+        new Thread(()->{
+            try{
+                if(TcpConnection.getSocket() == null) return;
+
+                ObjectOutputStream out = TcpConnection.getOut();
+                ObjectInputStream in = TcpConnection.getIn();
+
+                synchronized (out) {
+                    out.writeObject("GET_CONVERSATIONS");
+                    out.flush();
+                }
+
+                Object response = in.readObject();
+
+                if (response instanceof List) {
+                    List<?> list = (List<?>) response;
+                    if (!list.isEmpty() && list.get(0) instanceof GroupChat) {
+                        @SuppressWarnings("unchecked")
+                        List<GroupChat> groupChats = (List<GroupChat>) list;
+                        LocalStorage.setCurrentUserGroupChats(groupChats);
+
+                        runOnUiThread(()->{
+                            adapter.setGroupChats(groupChats);
+                            adapter.notifyDataSetChanged();
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
 }
+

@@ -1,9 +1,11 @@
 package com.example.tcpclient;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,6 +27,7 @@ import chat.User;
 
 public class RegisterActivity extends AppCompatActivity {
     private ConfigReader config;
+    SharedPreferences preferences;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,12 +40,7 @@ public class RegisterActivity extends AppCompatActivity {
         });
 
         config = new ConfigReader(this);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        TcpConnection.close();
+        preferences = SecureStorage.getEncryptedPrefs(getApplicationContext());
     }
 
     public void handleAccount(View view) {
@@ -50,6 +48,7 @@ public class RegisterActivity extends AppCompatActivity {
         EditText usernameField = findViewById(R.id.editTextText);
         EditText passwordField = findViewById(R.id.editTextTextPassword2);
         EditText confirmedPasswordField = findViewById(R.id.editTextTextPassword3);
+        CheckBox checkBox = findViewById(R.id.checkBoxKeepSignedInRegister);
 
         String username = usernameField.getText().toString().trim();
         String password = passwordField.getText().toString().trim();
@@ -98,6 +97,18 @@ public class RegisterActivity extends AppCompatActivity {
                         TcpConnection.setCurrentUser((User)response);
                         TcpConnection.setCurrentUserId(((User) response).getId());
 
+                        if(checkBox.isChecked()){
+                            SharedPreferences.Editor editor = preferences.edit();
+                            editor.putString("username", username);
+                            editor.putString("password", password);
+                            editor.apply();
+                        }
+                        else{
+                            SharedPreferences.Editor editor = preferences.edit();
+                            editor.clear();
+                            editor.apply();
+                        }
+
                         //Intent intent = new Intent(RegisterActivity.this, ConversationActivity.class);
                         Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                         startActivity(intent);
@@ -126,7 +137,12 @@ public class RegisterActivity extends AppCompatActivity {
                 });
 
             } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
+                TcpConnection.close();
+
+                runOnUiThread(() ->
+                        Toast.makeText(RegisterActivity.this, "Connection Error: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
             }
         }).start();
     }

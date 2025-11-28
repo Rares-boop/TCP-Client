@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.constraintlayout)
     //implementation(files("C:/Users/Rares/Desktop/TCPClient/app/libs/ChatClasses.jar "))
     implementation(files("libs/chat-lib.jar"))
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
