@@ -132,11 +132,26 @@ public class ConversationActivity extends AppCompatActivity {
                         break;
                     }
                 }
-            } catch (IOException | ClassNotFoundException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();
-    }
+
+        View btnBack = findViewById(R.id.btnBackArrow);
+
+        btnBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                handleBackPress();
+            }
+        });
+
+        TextView txtChatName = (TextView)findViewById(R.id.txtChatName);
+        Intent intent = getIntent();
+
+        String chatName = intent.getStringExtra("CHAT_NAME");
+        txtChatName.setText(chatName);
+        }
 
     @SuppressLint({"GestureBackNavigation", "MissingSuperCall"})
     @Override
@@ -176,7 +191,10 @@ public class ConversationActivity extends AppCompatActivity {
                     messageBox.requestFocus();
                 });
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
+                runOnUiThread(() ->
+                        Toast.makeText(ConversationActivity.this, "Failed to send", Toast.LENGTH_SHORT).show()
+                );
             }
         }).start();
     }
@@ -202,10 +220,8 @@ public class ConversationActivity extends AppCompatActivity {
                     attempts++;
                 }
 
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (Exception e) {
+                e.printStackTrace();
             } finally {
                 runOnUiThread(this::finish);
             }

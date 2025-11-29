@@ -88,42 +88,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /*@SuppressLint("NotifyDataSetChanged")
-    @Override
-    protected void onStart() {
-        super.onStart();
-        new Thread(()->{
-            Socket socket = TcpConnection.getSocket();
-            ObjectOutputStream out = TcpConnection.getOut();
-            ObjectInputStream in = TcpConnection.getIn();
-            try{
-                out.writeObject("GET_CONVERSATIONS");
-                out.flush();
-
-                Object response = in.readObject();
-
-                if (response instanceof List) {
-                    List<?> list = (List<?>) response;
-                    if (!list.isEmpty() && list.get(0) instanceof GroupChat) {
-                        @SuppressWarnings("unchecked")
-                        List<GroupChat> groupChats = (List<GroupChat>) list;
-                        LocalStorage.setCurrentUserGroupChats(groupChats);
-                        //System.out.println("Received group chats: " + groupChats.size());
-                        runOnUiThread(()->{
-                            Toast.makeText(this, "Chats: " + groupChats.size(), Toast.LENGTH_SHORT).show();
-                            adapter.setGroupChats(groupChats); // update adapter's data
-                            adapter.notifyDataSetChanged();
-                        });
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).start();
-    }*/
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -171,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(this, parts[1] + " group not allowed", Toast.LENGTH_SHORT).show();
                     } else if (parts[0].equalsIgnoreCase("OK")) {
                         Intent intent = new Intent(this, ConversationActivity.class);
+
+                        intent.putExtra("CHAT_NAME",chat.getName());
                         startActivity(intent);
                     }
                 });
@@ -249,11 +215,11 @@ public class MainActivity extends AppCompatActivity {
                                             Toast.makeText(this, chat.getName() + " was not found ",
                                                     Toast.LENGTH_SHORT).show());
                                 }
-
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            } catch (ClassNotFoundException e) {
-                                throw new RuntimeException(e);
+                            }catch (Exception e) {
+                                e.printStackTrace();
+                                runOnUiThread(() ->
+                                        Toast.makeText(MainActivity.this, "Failed to rename: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                                );
                             }
 
                         }).start();
@@ -301,12 +267,12 @@ public class MainActivity extends AppCompatActivity {
                                         Toast.makeText(this, chat.getName() + " was not found ",
                                                 Toast.LENGTH_SHORT).show());
                             }
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            throw new RuntimeException(e);
+                        }catch (Exception e) {
+                            e.printStackTrace();
+                            runOnUiThread(() ->
+                                    Toast.makeText(MainActivity.this, "Failed to delete: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                            );
                         }
-
                     }).start();
                 }).setNegativeButton("Cancel ",(dialog, which)->dialog.cancel())
                 .create().show();
@@ -486,8 +452,11 @@ public class MainActivity extends AppCompatActivity {
                                     out.writeObject("LOGOUT");
                                     out.flush();
                                 }
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
+                            }catch (Exception e) {
+                                e.printStackTrace();
+                                runOnUiThread(()->
+                                        Toast.makeText(MainActivity.this, "Failed to log out "+e.getMessage(),Toast.LENGTH_SHORT).show()
+                                );
                             }
 
                             TcpConnection.stopListening();
@@ -542,8 +511,8 @@ public class MainActivity extends AppCompatActivity {
 
                 out.writeObject("RST");
                 out.flush();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            }catch (Exception e) {
+                e.printStackTrace();
             }
         }).start();
     }
