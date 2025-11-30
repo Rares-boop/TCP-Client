@@ -27,10 +27,18 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     private static final int VIEW_TYPE_MINE = 1;
     private static final int VIEW_TYPE_FRIEND = 2;
 
-    public MessageAdapter(Context context, List<Message> messages, int currentUserId) {
+    private final OnMessageLongClickListener longClickListener;
+
+    public interface OnMessageLongClickListener{
+        void onMessageLongClick(Message message);
+    }
+
+    public MessageAdapter(Context context, List<Message> messages, int currentUserId,
+                          OnMessageLongClickListener longClickListener) {
         this.context = context;
         this.messages = messages;
         this.currentUserId = currentUserId;
+        this.longClickListener = longClickListener;
     }
 
     @Override
@@ -76,6 +84,16 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         } else {
             // Dacă e aceeași zi, ascunde header-ul
             holder.dateHeader.setVisibility(View.GONE);
+        }
+
+        if(message.getSenderId() == currentUserId){
+            holder.itemView.setOnLongClickListener(v->{
+                longClickListener.onMessageLongClick(message);
+                return true;
+            });
+        }
+        else{
+            holder.itemView.setOnLongClickListener(null);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.example.tcpclient;
 
 import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
@@ -14,6 +15,7 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
@@ -28,6 +30,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import chat.Message;
@@ -59,7 +62,13 @@ public class ConversationActivity extends AppCompatActivity {
         }
 
         recyclerView = (RecyclerView)findViewById(R.id.recyclerViewMessages);
-        messageAdapter = new MessageAdapter(this, messages, TcpConnection.getCurrentUserId());
+        messageAdapter = new MessageAdapter(this, messages, TcpConnection.getCurrentUserId(),
+                new MessageAdapter.OnMessageLongClickListener() {
+                    @Override
+                    public void onMessageLongClick(Message message) {
+                        handleLongMessageClick(message);
+                    }
+                });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(messageAdapter);
@@ -122,8 +131,41 @@ public class ConversationActivity extends AppCompatActivity {
                                 isRunning = false;
                                 break;
                             }
-                        }
+                            else if (command.startsWith("BCST_EDIT")){
+                                int idEdit = Integer.parseInt(command.split(",")[1]);
 
+                                Object newContent = in.readObject();
+
+                                if(newContent instanceof byte[]){
+                                    byte[] newByteContent = (byte[])newContent;
+
+                                    runOnUiThread(()->{
+                                        for(int i=0;i<messages.size();i++){
+                                            if(messages.get(i).getId() == idEdit){
+                                                messages.get(i).setContent(newByteContent);
+                                                messageAdapter.notifyItemChanged(i);
+
+                                                break;
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            else if(command.startsWith("BCST_DELETE")){
+                                int idDelete = Integer.parseInt(command.split(",")[1]);
+
+                                runOnUiThread(()->{
+                                    for(int i=0;i<messages.size();i++){
+                                        if(messages.get(i).getId() == idDelete){
+                                            messages.remove(i);
+                                            messageAdapter.notifyItemRemoved(i);
+
+                                            break;
+                                        }
+                                    }
+                                });
+                            }
+                        }
                     }catch (Exception e){
                         isRunning = false;
                         break;
@@ -179,11 +221,6 @@ public class ConversationActivity extends AppCompatActivity {
                 }
 
                 runOnUiThread(() -> {
-                    //la messages unde este 0 primul este id message si al doilea id group
-                    /*messages.add(new Message(0, messageByte, System.currentTimeMillis(), TcpConnection.getCurrentUserId(), 0));
-                    messageAdapter.notifyItemInserted(messages.size() - 1);
-                    recyclerView.scrollToPosition(messages.size() - 1);*/
-
                     messageBox.setText("");
                     messageBox.requestFocus();
                 });
@@ -223,6 +260,117 @@ public class ConversationActivity extends AppCompatActivity {
                 runOnUiThread(this::finish);
             }
         }).start();
+    }
+
+    public void handleLongMessageClick(Message message){
+        //Toast.makeText(this, message.toString(), Toast.LENGTH_SHORT).show();
+        AlertDialog alertDialog = new AlertDialog.Builder(ConversationActivity.this)
+                .setTitle("Modify or delete message ")
+                .setItems(new String[]{"Modify", "Delete"},((dialog, which) -> {
+                    if(which == 0){
+                        modifyMessage(message);
+                    }
+                    else{
+                        deleteMessage(message);
+                    }
+                })).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                }).create();
+
+        alertDialog.show();
+    }
+
+    public void modifyMessage(Message message){
+        //Toast.makeText(this,"UPDATE " + message.getId(),Toast.LENGTH_SHORT).show();
+        EditText input = new EditText(this);
+        String messageContent = new String(message.getContent());
+
+        input.setText(messageContent);
+        input.setSelection(messageContent.length());
+
+        AlertDialog alertDialog = new AlertDialog.Builder(this)
+                .setTitle("Modify message ")
+                .setView(input)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String newText = input.getText().toString();
+
+                        if(newText.isEmpty()){
+                            Toast.makeText(ConversationActivity.this, "Message cannot be empty ",Toast.LENGTH_SHORT).show();
+                        }
+                        else if(newText.equals(messageContent)){
+                            Toast.makeText(ConversationActivity.this, "No changes made", Toast.LENGTH_SHORT).show();
+                        }
+                        else{
+                            new Thread(()->{
+                                try{
+                                    byte[] newContentBytes = newText.getBytes();
+
+                                    if(out != null){
+                                        synchronized (out){
+                                            out.writeObject("CMD_EDIT,"+message.getId());
+                                            out.flush();
+
+                                            out.writeObject(newContentBytes);
+                                            out.flush();
+                                        }
+                                    }
+                                } catch (Exception e) {
+//                                    throw new RuntimeException(e);
+                                    e.printStackTrace();
+                                    runOnUiThread(() ->
+                                            Toast.makeText(ConversationActivity.this, "Failed to edit: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                                    );
+                                }
+                            }).start();
+                        }
+
+                    }
+                }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                }).create();
+        alertDialog.show();
+    }
+
+    public void deleteMessage(Message message){
+        //Toast.makeText(this,"DELETE " + message.getId(),Toast.LENGTH_SHORT).show();
+        AlertDialog alertDialog = new AlertDialog.Builder(this)
+                .setTitle("Delete chat ")
+                .setMessage("Are you sure you want to delete \"" + new String(message.getContent()) + "\"?")
+                .setPositiveButton("DELETE", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        new Thread(()->{
+                            try{
+                                if (out != null) {
+                                    synchronized (out) {
+                                        out.writeObject("CMD_DELETE," + message.getId());
+                                        out.flush();
+                                    }
+                                }
+                            } catch (IOException e) {
+//                            throw new RuntimeException(e);
+                                e.printStackTrace();
+                                runOnUiThread(() ->
+                                        Toast.makeText(ConversationActivity.this, "Failed to delete: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                                );
+                            }
+                        }).start();
+                    }
+                }).setNegativeButton("Cancel ", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                }).create();
+        alertDialog.show();
     }
 }
 
