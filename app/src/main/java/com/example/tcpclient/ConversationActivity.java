@@ -107,14 +107,11 @@ public class ConversationActivity extends AppCompatActivity {
                     try{
                         Object incoming = in.readObject();
 
-                        if (incoming instanceof byte[]) {
-                            // E un mesaj normal
-                            byte[] receivedMessageByte = (byte[]) incoming;
-                            Message received = new Message(0, receivedMessageByte,
-                                    System.currentTimeMillis(), 999, 0);
+                        if (incoming instanceof Message) {
+                            Message receivedMessage = (Message) incoming;
 
                             runOnUiThread(() -> {
-                                messages.add(received);
+                                messages.add(receivedMessage);
                                 messageAdapter.notifyItemInserted(messages.size() - 1);
                                 recyclerView.scrollToPosition(messages.size() - 1);
                             });
@@ -183,9 +180,9 @@ public class ConversationActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> {
                     //la messages unde este 0 primul este id message si al doilea id group
-                    messages.add(new Message(0, messageByte, System.currentTimeMillis(), TcpConnection.getCurrentUserId(), 0));
+                    /*messages.add(new Message(0, messageByte, System.currentTimeMillis(), TcpConnection.getCurrentUserId(), 0));
                     messageAdapter.notifyItemInserted(messages.size() - 1);
-                    recyclerView.scrollToPosition(messages.size() - 1);
+                    recyclerView.scrollToPosition(messages.size() - 1);*/
 
                     messageBox.setText("");
                     messageBox.requestFocus();
